@@ -1,10 +1,16 @@
 import streamlit as st
-import replicate
 import os
 from PIL import Image
 import requests
 from io import BytesIO
 
+# Direkte Authentifizierung mit dem Token aus Secrets (zuverlässiger!)
+import replicate
+replicate.Client(api_token=st.secrets["REPLICATE_API_TOKEN"])
+
+# Den alten Block entfernen (nicht mehr nötig):
+# if "REPLICATE_API_TOKEN" in st.secrets:
+#     os.environ["REPLICATE_API_TOKEN"] = st.secrets["REPLICATE_API_TOKEN"]
 # Seitenkonfiguration
 st.set_page_config(
     page_title="NSFW AI Image Generator",
