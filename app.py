@@ -166,7 +166,7 @@ if st.button("🎨 Kostenlose Vorschau erstellen", type="primary"):
         st.warning("⚠️ Bitte gib mindestens einen Namen oder ein Thema ein.")
     else:
         with st.spinner("✨ Deine Malvorlage wird erstellt... Das dauert einen Moment!"):
-            image, error generate_coloring_page(child_name, theme, hobby, companion, drawing_style)
+            image, error = generate_coloring_page(child_name, theme, hobby, companion, drawing_style)
             
             if error:
                 st.error(f"❌ {error}")
