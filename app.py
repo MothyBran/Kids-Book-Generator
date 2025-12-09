@@ -65,25 +65,30 @@ with col2:
 
 st.markdown("---")
 
-# Funktion zum Hinzufügen des Wasserzeichens
+# --- NEUE VERSION FÜR WASSERZEICHEN ---
 def add_watermark(image):
     """Fügt ein halbtransparentes 'VORSCHAU' Wasserzeichen hinzu"""
-    # Konvertiere zu RGBA falls nötig
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
     
-    # Erstelle eine transparente Overlay-Ebene
     overlay = Image.new('RGBA', image.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(overlay)
     
-    # Versuche eine große Schriftart zu laden, fallback zu default
+    # Dynamische Schriftgröße: 15% der Bildbreite (für HD Bilder)
+    font_size = int(image.width * 0.15)
+    
     try:
-        font_size = 40
+        # Versuche Standard-Font, sonst Fallback
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
     except:
-        font = ImageFont.load_default()
-    
-    # Text und Position
+        # Fallback für Streamlit Cloud, falls Pfad anders ist, oder LoadDefault (leider klein)
+        # Besserer Trick: Wir laden keine externe Font, sondern nutzen Default und skalieren nicht, 
+        # ABER: Da Default Fonts oft nicht skalierbar sind, nutzen wir einen Trick für Streamlit Cloud:
+        try:
+             font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size) 
+        except:
+             font = ImageFont.load_default() 
+
     text = "VORSCHAU"
     
     # Berechne Textgröße
@@ -91,62 +96,59 @@ def add_watermark(image):
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
     
-    # Positioniere den Text diagonal
     width, height = image.size
     x = (width - text_width) // 2
     y = (height - text_height) // 2
     
-    # Zeichne den Text mit Transparenz (halbtransparent grau)
-    draw.text((x, y), text, fill=(128, 128, 128, 180), font=font)
+    # Zeichne den Text (Grau, halbtransparent)
+    draw.text((x, y), text, fill=(150, 150, 150, 160), font=font)
     
-    # Kombiniere Original und Overlay
-    watermarked = Image.alpha_composite(image, overlay)
-    return watermarked.convert('RGB')
+    return Image.alpha_composite(image, overlay).convert('RGB')
 
-# Funktion zur Bildgenerierung
+# --- NEUE VERSION FÜR DALL-E 3 ---
 def generate_coloring_page(name, theme, hobby, companion):
-    """Generiert eine Malvorlage mit DALL-E 2"""
+    """Generiert eine Malvorlage mit DALL-E 3"""
     try:
-        # OpenAI Client initialisieren
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
-        # Prompt erstellen
-        prompt_parts = [f"Black and white coloring book page for kids, simple lines, thick outlines, white background"]
-        
-        if theme:
-            prompt_parts.append(f"theme: {theme}")
-        
-        if name:
-            prompt_parts.append(f"featuring a happy child character named {name}")
+        # DALL-E 3 Prompt Engineering (Strikte Anweisungen für Linienkunst)
+        # Wir bauen einen fließenden Satz, das versteht DALL-E 3 besser als Kommas.
+        prompt_text = (
+            f"A professional black and white coloring book page for children. "
+            f"Subject: A happy child named '{name}' in a '{theme}' setting. "
+        )
         
         if hobby:
-            prompt_parts.append(f"doing {hobby}")
-        
+            prompt_text += f"The child is actively {hobby}. "
         if companion:
-            prompt_parts.append(f"with a cute {companion}")
+            prompt_text += f"Accompanied by a cute {companion}. "
+            
+        # WICHTIG: Der Stil-Teil am Ende erzwingt den Look
+        prompt_text += (
+            "Style requirements: Pure line art only. Thick, clean black outlines on a pure white background. "
+            "NO shading, NO grayscale, NO fill colors, NO complex details. "
+            "The image must be simple enough for a 5-year-old to color."
+        )
         
-        prompt = ", ".join(prompt_parts) + ". Style: simple coloring book, clear outlines, no shading, child-friendly."
-        
-        # Bild generieren
+        # Bild generieren (DALL-E 3)
         response = client.images.generate(
-            model="dall-e-2",
-            prompt=prompt,
-            size="256x256",
+            model="dall-e-3",
+            prompt=prompt_text,
+            size="1024x1024",  # HD Größe
+            quality="standard", # Kostet $0.04
             n=1
         )
         
-        # Bild herunterladen
         image_url = response.data[0].url
         image_response = requests.get(image_url)
         image = Image.open(BytesIO(image_response.content))
         
-        # Wasserzeichen hinzufügen
         watermarked_image = add_watermark(image)
         
         return watermarked_image, None
         
     except Exception as e:
-        return None, f"Fehler bei der Bildgenerierung: {str(e)}"
+        return None, f"Fehler: {str(e)}"
 
 # Button zur Generierung
 if st.button("🎨 Kostenlose Vorschau erstellen", type="primary"):
