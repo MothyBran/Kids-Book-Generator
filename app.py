@@ -63,6 +63,13 @@ with col2:
     hobby = st.text_input("Hobby", placeholder="z.B. singen, schwimmen, tanzen")
     companion = st.text_input("Begleiter", placeholder="z.B. Hund, Teddy, Drache")
 
+# --- NEUE STIL-AUSWAHL HINZUFÜGEN ---
+drawing_style = st.selectbox(
+    "🎨 Gewünschter Zeichenstil",
+    options=["Niedlich & einfach (Chibi)", "Realistisch (Comic)", "Geometrisch (Modern)"],
+    index=0
+)
+
 st.markdown("---")
 
 # --- NEUE VERSION FÜR WASSERZEICHEN ---
@@ -105,43 +112,42 @@ def add_watermark(image):
     
     return Image.alpha_composite(image, overlay).convert('RGB')
 
-# --- NEUE VERSION FÜR DALL-E 3 ---
-def generate_coloring_page(name, theme, hobby, companion):
-    """Generiert eine Malvorlage mit DALL-E 3"""
+# --- KOMPLETTE NEUE generate_coloring_page FUNKTION ERSETZEN ---
+
+def generate_coloring_page(name, theme, hobby, companion, drawing_style):
+    """Generiert eine Malvorlage mit DALL-E 3 und Stil-Auswahl"""
     try:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
-        # DALL-E 3 Prompt Engineering (Strikte Anweisungen für Linienkunst)
-        # Wir bauen einen fließenden Satz, das versteht DALL-E 3 besser als Kommas.
+        # Mapping der Auswahl auf KI-Keywords
+        style_map = {
+            "Niedlich & einfach (Chibi)": "in a cute, 'chibi' cartoon style, high contrast",
+            "Realistisch (Comic)": "in a detailed, classic American comic book style, highly illustrative",
+            "Geometrisch (Modern)": "in a simplified, bold geometric design, minimal curves",
+        }
+        
+        selected_style_keyword = style_map.get(drawing_style, style_map["Niedlich & einfach (Chibi)"])
+        
+        # Zusammenbau des Super-Prompts
         prompt_text = (
-            f"A professional black and white coloring book page for children. "
-            f"Subject: A happy child named '{name}' in a '{theme}' setting. "
+            f"A high-quality, professional, UNCLUTTERED coloring book page for a child aged 4-6. "
+            f"Style: Simplified, pure black and white line art, {selected_style_keyword}. Use only thick, chunky, continuous outlines. No shading, no grayscale, no subtle internal lines. "
+            f"Composition: The single main subject must fill 80% of the vertical canvas. The background must be pure white. "
+            f"Subject: A single, happy child named '{name}' is actively '{hobby}' in a cheerful '{theme}' scene, with a cute and simple '{companion}'. "
+            f"Focus solely on large, easy-to-color areas. "
+            f"The name '{name}' must appear in bold, clean, outline letters at the top of the coloring page, perfectly centered, ready for coloring."
         )
         
-        if hobby:
-            prompt_text += f"The child is actively {hobby}. "
-        if companion:
-            prompt_text += f"Accompanied by a cute {companion}. "
-            
-        # WICHTIG: Der Stil-Teil am Ende erzwingt den Look
-        prompt_text += (
-            "Style requirements: A high-quality, professional, UNCLUTTERED coloring book page for a child aged 4-6.
-Style: Simplified, pure black and white cartoon line art. Use only thick, chunky, continuous outlines. No shading, no grayscale, no subtle internal lines.
-Composition: The single main subject must fill 80% of the vertical canvas. The background must be pure white.
-Subject: A single, happy child named '{name}' is actively '{hobby}' in a cheerful '{theme}' scene, with a cute and simple '{companion}'.
-Focus solely on large, easy-to-color areas.
-"
-        )
-        
-        # Bild generieren (DALL-E 3)
+        # Bild generieren
         response = client.images.generate(
             model="dall-e-3",
             prompt=prompt_text,
-            size="1024x1792",  # DIN A4 Hochformat
-            quality="standard", 
+            size="1024x1792", # DIN A4 Hochformat
+            quality="standard",
             n=1
         )
         
+        # ... (Bild-Download und Wasserzeichen-Logik bleibt gleich)
         image_url = response.data[0].url
         image_response = requests.get(image_url)
         image = Image.open(BytesIO(image_response.content))
@@ -160,7 +166,7 @@ if st.button("🎨 Kostenlose Vorschau erstellen", type="primary"):
         st.warning("⚠️ Bitte gib mindestens einen Namen oder ein Thema ein.")
     else:
         with st.spinner("✨ Deine Malvorlage wird erstellt... Das dauert einen Moment!"):
-            image, error = generate_coloring_page(child_name, theme, hobby, companion)
+            image, error generate_coloring_page(child_name, theme, hobby, companion, drawing_style)
             
             if error:
                 st.error(f"❌ {error}")
