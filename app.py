@@ -25,6 +25,7 @@ st.markdown("""
         border-radius: 10px;
         padding: 12px 24px;
         border: none;
+        width: 100%;
     }
     .stButton>button:hover {
         background-color: #FF4D7D;
@@ -33,193 +34,166 @@ st.markdown("""
         color: #FF6B9D;
         text-align: center;
     }
-    .subtitle {
-        text-align: center;
-        color: #666;
-        font-size: 18px;
-        margin-bottom: 30px;
-    }
     </style>
 """, unsafe_allow_html=True)
 
 # Header
 st.title("🎨 Dein persönliches Malbuch")
-st.markdown('<p class="subtitle">Erstelle eine einzigartige Malvorlage für dein Kind – mit Namen und Lieblingsthemen!</p>', unsafe_allow_html=True)
 
-# Session State initialisieren
+# Session State
 if 'generated_image' not in st.session_state:
     st.session_state.generated_image = None
 
 # Input-Felder
-st.subheader("✏️ Erzähl uns von deinem Kind")
-
+st.subheader("✏️ Dein Kind")
 col1, col2 = st.columns(2)
-
 with col1:
-    child_name = st.text_input("Name des Kindes", placeholder="z.B. Emma")
-    theme = st.text_input("Themenwelt", placeholder="z.B. Ritter, Weltraum, Prinzessin")
-
+    child_name = st.text_input("Name", placeholder="z.B. Leo")
+    theme = st.text_input("Thema", placeholder="z.B. Pirat")
 with col2:
-    hobby = st.text_input("Hobby", placeholder="z.B. singen, schwimmen, tanzen")
-    companion = st.text_input("Begleiter", placeholder="z.B. Hund, Teddy, Drache")
+    hobby = st.text_input("Hobby", placeholder="z.B. Fußball")
+    companion = st.text_input("Tierfreund", placeholder="z.B. Papagei")
 
-# --- NEUE STIL-AUSWAHL HINZUFÜGEN ---
+# Stil-Auswahl
 drawing_style = st.selectbox(
-    "🎨 Gewünschter Zeichenstil",
-    options=["Niedlich & einfach (Chibi)", "Realistisch (Comic)", "Geometrisch (Modern)"],
+    "🎨 Zeichenstil",
+    options=["Klar & Einfach (4-6 Jahre)", "Comic Detail (6-8 Jahre)", "Disney-Stil (Alle Alter)"],
     index=0
 )
 
-st.markdown("---")
-
-# --- NEUE VERSION FÜR WASSERZEICHEN ---
-def add_watermark(image):
-    """Fügt ein halbtransparentes 'VORSCHAU' Wasserzeichen hinzu"""
+# --- FUNKTION: BILD BEARBEITEN (Name + Wasserzeichen) ---
+def process_image(image, name):
+    """Fügt den Namen oben hinzu und das Wasserzeichen"""
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
     
-    overlay = Image.new('RGBA', image.size, (255, 255, 255, 0))
-    draw = ImageDraw.Draw(overlay)
+    # 1. Bild vergrößern für den Header (weißer Balken oben dran)
+    header_height = 180
+    new_height = image.height + header_height
+    new_image = Image.new("RGB", (image.width, new_height), "white")
+    new_image.paste(image, (0, header_height))
     
-    # Dynamische Schriftgröße: 15% der Bildbreite (für HD Bilder)
-    font_size = int(image.width * 0.15)
+    draw = ImageDraw.Draw(new_image)
     
+    # --- NAME EINFÜGEN (Python statt KI) ---
     try:
-        # Versuche Standard-Font, sonst Fallback
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+        # Versuche eine schöne dicke Schrift zu laden
+        title_font_size = 120
+        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        title_font = ImageFont.truetype(font_path, title_font_size)
     except:
-        # Fallback für Streamlit Cloud, falls Pfad anders ist, oder LoadDefault (leider klein)
-        # Besserer Trick: Wir laden keine externe Font, sondern nutzen Default und skalieren nicht, 
-        # ABER: Da Default Fonts oft nicht skalierbar sind, nutzen wir einen Trick für Streamlit Cloud:
-        try:
-             font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size) 
-        except:
-             font = ImageFont.load_default() 
+        title_font = ImageFont.load_default()
 
-    text = "VORSCHAU"
+    # Text zentrieren
+    text = name.upper() if name else "MEIN MALBUCH"
     
-    # Berechne Textgröße
-    bbox = draw.textbbox((0, 0), text, font=font)
-    text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
+    # Bounding Box berechnen (neue Methode für Pillow 10+)
+    left, top, right, bottom = draw.textbbox((0, 0), text, font=title_font)
+    text_width = right - left
+    text_height = bottom - top
     
-    width, height = image.size
-    x = (width - text_width) // 2
-    y = (height - text_height) // 2
+    text_x = (new_image.width - text_width) // 2
+    text_y = (header_height - text_height) // 2 - 10 # Mittig im Header
     
-    # Zeichne den Text (Grau, halbtransparent)
-    draw.text((x, y), text, fill=(150, 150, 150, 160), font=font)
-    
-    return Image.alpha_composite(image, overlay).convert('RGB')
+    # Text zeichnen (Schwarz)
+    draw.text((text_x, text_y), text, fill="black", font=title_font)
 
-# --- KOMPLETTE NEUE generate_coloring_page FUNKTION ERSETZEN ---
+    # --- WASSERZEICHEN ---
+    # Transparente Ebene für Wasserzeichen
+    watermark_layer = Image.new('RGBA', new_image.size, (255, 255, 255, 0))
+    wm_draw = ImageDraw.Draw(watermark_layer)
+    
+    wm_text = "VORSCHAU"
+    wm_font_size = int(new_image.width * 0.18) # Groß quer drüber
+    try:
+        wm_font = ImageFont.truetype(font_path, wm_font_size)
+    except:
+        wm_font = ImageFont.load_default()
+        
+    l, t, r, b = wm_draw.textbbox((0, 0), wm_text, font=wm_font)
+    wm_w = r - l
+    wm_h = b - t
+    
+    wm_x = (new_image.width - wm_w) // 2
+    wm_y = (new_image.height - wm_h) // 2
+    
+    # Halbtransparentes Grau
+    wm_draw.text((wm_x, wm_y), wm_text, fill=(200, 200, 200, 150), font=wm_font)
+    
+    # Zusammenfügen
+    final_image = Image.alpha_composite(new_image.convert('RGBA'), watermark_layer)
+    return final_image.convert('RGB')
 
+# --- FUNKTION: KI GENERIERUNG ---
 def generate_coloring_page(name, theme, hobby, companion, drawing_style):
-    """Generiert eine Malvorlage mit DALL-E 3 und Stil-Auswahl"""
     try:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
-        # Mapping der Auswahl auf KI-Keywords
-        style_map = {
-            "Niedlich & einfach (Chibi)": "in a cute, 'chibi' cartoon style, high contrast",
-            "Realistisch (Comic)": "in a detailed, classic American comic book style, highly illustrative",
-            "Geometrisch (Modern)": "in a simplified, bold geometric design, minimal curves",
-        }
-        
-        selected_style_keyword = style_map.get(drawing_style, style_map["Niedlich & einfach (Chibi)"])
-        
-        # Zusammenbau des Super-Prompts
+        # Stil-Mapping
+        if "Disney" in drawing_style:
+            style_prompt = "in a cute Disney-like animation style, large eyes, soft curves"
+        elif "Comic" in drawing_style:
+            style_prompt = "in a classic comic book style, dynamic pose, detailed but clear"
+        else:
+            style_prompt = "in a very simple, bold line art style (chibi), minimum details"
+
+        # OPTIMIERTER PROMPT GEGEN DOPPELGÄNGER
         prompt_text = (
-            f"A high-quality, professional, UNCLUTTERED coloring book page for a child aged 4-6. "
-            f"Style: Simplified, pure black and white line art, {selected_style_keyword}. Use only thick, chunky, continuous outlines. No shading, no grayscale, no subtle internal lines. "
-            f"Composition: The single main subject must fill 80% of the vertical canvas. The background must be pure white. "
-            f"Subject: A single, happy child named '{name}' is actively '{hobby}' in a cheerful '{theme}' scene, with a cute and simple '{companion}'. "
-            f"Focus solely on large, easy-to-color areas. "
-            f"The name '{name}' must appear in bold, clean, outline letters at the top of the coloring page, perfectly centered, ready for coloring."
+            f"A single, vertical, full-body coloring book page black and white line drawing. "
+            f"Subject: One single character representing a child named {name}, dressed as {theme}, holding a {companion}. "
+            f"Action: The character is {hobby}. "
+            f"Style: {style_prompt}. Pure black and white vector lines. White background. "
+            f"CONSTRAINTS: Do not split the image. Do not use panels. Do not use split screen. "
+            f"Show ONLY ONE central figure. No background details, no shading, no greyscale. High contrast."
         )
         
         # Bild generieren
         response = client.images.generate(
             model="dall-e-3",
             prompt=prompt_text,
-            size="1024x1792", # DIN A4 Hochformat
+            size="1024x1792",
             quality="standard",
             n=1
         )
         
-        # ... (Bild-Download und Wasserzeichen-Logik bleibt gleich)
         image_url = response.data[0].url
         image_response = requests.get(image_url)
-        image = Image.open(BytesIO(image_response.content))
-        
-        watermarked_image = add_watermark(image)
-        
-        return watermarked_image, None
+        return Image.open(BytesIO(image_response.content)), None
         
     except Exception as e:
         return None, f"Fehler: {str(e)}"
 
-# Button zur Generierung
-if st.button("🎨 Kostenlose Vorschau erstellen", type="primary"):
-    # Validierung
-    if not child_name and not theme:
-        st.warning("⚠️ Bitte gib mindestens einen Namen oder ein Thema ein.")
+# Button
+if st.button("✨ Vorschau erstellen"):
+    if not child_name or not theme:
+        st.warning("Bitte Name und Thema eingeben.")
     else:
-        with st.spinner("✨ Deine Malvorlage wird erstellt... Das dauert einen Moment!"):
-            image, error = generate_coloring_page(child_name, theme, hobby, companion, drawing_style)
+        with st.spinner("Maler-Roboter arbeiten... 🤖🎨"):
+            # Syntax-Fehler hier behoben: "=" hinzugefügt
+            raw_image, error = generate_coloring_page(child_name, theme, hobby, companion, drawing_style)
             
             if error:
-                st.error(f"❌ {error}")
-                st.info("💡 Tipp: Überprüfe, ob dein OpenAI API Key in den Streamlit Secrets konfiguriert ist.")
+                st.error(error)
             else:
-                st.session_state.generated_image = image
-                st.success("✅ Deine Vorschau ist fertig!")
+                # Hier fügen wir den Namen per Python hinzu
+                final_image = process_image(raw_image, child_name)
+                st.session_state.generated_image = final_image
+                st.rerun()
 
-# Bild anzeigen, wenn generiert
-if st.session_state.generated_image is not None:
+# Ergebnis Anzeige
+if st.session_state.generated_image:
     st.markdown("---")
-    st.subheader("🖼️ Deine Malvorlagen-Vorschau")
-    
-    # Bild zentriert anzeigen
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 6, 1])
     with col2:
         st.image(st.session_state.generated_image, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # Call to Action
-    st.markdown("### 🌟 Gefällt dir die Vorschau?")
-    st.markdown("Erhalte das Bild in **hochauflösender Qualität (1024x1024 Pixel)** ohne Wasserzeichen – perfekt zum Ausdrucken!")
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-            <a href="https://buy.stripe.com/dein_link" target="_blank">
-                <button style="
-                    background-color: #4CAF50;
-                    color: white;
-                    padding: 15px 32px;
-                    text-align: center;
-                    font-size: 20px;
-                    font-weight: bold;
-                    border: none;
-                    border-radius: 12px;
-                    cursor: pointer;
-                    width: 100%;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                ">
-                    🎨 HD-Version kaufen (3,99€)
-                </button>
+        
+        st.success("Gefällt dir das Bild? Die HD-Version ist noch schärfer!")
+        
+        # Kauf-Button
+        st.markdown(f"""
+            <a href="https://buy.stripe.com/dein_link" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #4CAF50; color: white; padding: 15px; text-align: center; border-radius: 10px; font-weight: bold; font-size: 20px;">
+                    🛒 Bild kaufen (3,99€)
+                </div>
             </a>
         """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.info("💎 **Was du bekommst:** Hochauflösendes Bild (1024x1024px) ohne Wasserzeichen, sofortiger Download")
-
-# Footer
-st.markdown("---")
-st.markdown("""
-    <div style='text-align: center; color: #999; font-size: 14px;'>
-        Made with ❤️ for creative kids | Powered by OpenAI DALL-E
-    </div>
-""", unsafe_allow_html=True)
