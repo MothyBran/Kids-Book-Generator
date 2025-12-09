@@ -86,7 +86,7 @@ def generate_nsfw_image(figure, hair_color, hair_style, eye_color, phenotype, br
 
         # Aufruf an Replicate (NSFW-Flux-Modell)
         output = replicate.run(
-            "aisha-ai-official/flux.1dev-uncensored-msfluxnsfw-v3:b477d8fc3a62e591c6224e10020538c4a9c340fb1f494891aff60019ffd5bc48",
+            "aisha-ai-official/flux.1dev-uncensored-colossus-v5",
             input={
                 "prompt": input_prompt,
                 "width": 1024,  # Feste Breite (anpassen, wenn nötig)
