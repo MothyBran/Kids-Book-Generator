@@ -86,16 +86,14 @@ def generate_nsfw_image(figure, hair_color, hair_style, eye_color, phenotype, br
 
         # Aufruf an Replicate (NSFW-Flux-Modell)
         output = replicate.run(
-            "aisha-ai-official/nsfw-flux-dev",
-            input={
-                "prompt": input_prompt,
-                "width": 1024,  # Feste Breite (anpassen, wenn nötig)
-                "height": 1024,  # Feste Höhe für quadratische Bilder (oder z.B. 768 für 1024x768)
-                "steps": 8,  # Anzahl der Schritte (für schnellere Generierung)
-                "guidance_scale": 3.5,  # Stärke der Prompt-Befolgung
-                "seed": -1,  # Zufällig; für Reproduzierbarkeit einen festen Wert setzen
-            }
-        )
+    "black-forest-labs/flux-schnell",
+    input={
+        "prompt": input_prompt,
+        "aspect_ratio": "1:1",  # Oder "16:9" etc.
+        "output_format": "png",
+        "safety_tolerance": 2  # Optional, für weniger Safeties
+    }
+)
         
         # Output ist eine Liste von URLs
         image_url = output[0]
