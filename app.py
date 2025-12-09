@@ -49,10 +49,10 @@ st.subheader("✏️ Dein Kind")
 col1, col2 = st.columns(2)
 with col1:
     child_name = st.text_input("Name", placeholder="z.B. Leo")
-    theme = st.text_input("Thema", placeholder="z.B. Pirat")
+    theme = st.text_input("Thema", placeholder="z.B. Ritterburg")
 with col2:
-    hobby = st.text_input("Hobby", placeholder="z.B. Fußball")
-    companion = st.text_input("Tierfreund", placeholder="z.B. Papagei")
+    hobby = st.text_input("Hobby", placeholder="z.B. Schwertkampf")
+    companion = st.text_input("Tierfreund", placeholder="z.B. Drache")
 
 # Stil-Auswahl
 drawing_style = st.selectbox(
@@ -61,13 +61,13 @@ drawing_style = st.selectbox(
     index=0
 )
 
-# --- FUNKTION: BILD BEARBEITEN (Name + Wasserzeichen) ---
+# --- FUNKTION: BILD BEARBEITEN (Name als Outline + Wasserzeichen) ---
 def process_image(image, name):
-    """Fügt den Namen oben hinzu und das Wasserzeichen"""
+    """Fügt den Namen als Outline (Ausmalbar) oben hinzu"""
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
     
-    # 1. Bild vergrößern für den Header (weißer Balken oben dran)
+    # Header für den Namen erstellen
     header_height = 180
     new_height = image.height + header_height
     new_image = Image.new("RGB", (image.width, new_height), "white")
@@ -75,36 +75,35 @@ def process_image(image, name):
     
     draw = ImageDraw.Draw(new_image)
     
-    # --- NAME EINFÜGEN (Python statt KI) ---
+    # --- NAME EINFÜGEN (KONTUR-STIL) ---
     try:
-        # Versuche eine schöne dicke Schrift zu laden
-        title_font_size = 120
+        title_font_size = 130
+        # Pfad für Linux/Streamlit Cloud
         font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
         title_font = ImageFont.truetype(font_path, title_font_size)
     except:
         title_font = ImageFont.load_default()
 
-    # Text zentrieren
     text = name.upper() if name else "MEIN MALBUCH"
     
-    # Bounding Box berechnen (neue Methode für Pillow 10+)
+    # Text zentrieren
     left, top, right, bottom = draw.textbbox((0, 0), text, font=title_font)
     text_width = right - left
     text_height = bottom - top
     
     text_x = (new_image.width - text_width) // 2
-    text_y = (header_height - text_height) // 2 - 10 # Mittig im Header
+    text_y = (header_height - text_height) // 2 - 10
     
-    # Text zeichnen (Schwarz)
-    draw.text((text_x, text_y), text, fill="black", font=title_font)
+    # 1. Die schwarze Umrandung (Stroke)
+    # stroke_width=4 macht den Rand dick genug zum Ausmalen
+    draw.text((text_x, text_y), text, font=title_font, fill="white", stroke_width=5, stroke_fill="black")
 
     # --- WASSERZEICHEN ---
-    # Transparente Ebene für Wasserzeichen
     watermark_layer = Image.new('RGBA', new_image.size, (255, 255, 255, 0))
     wm_draw = ImageDraw.Draw(watermark_layer)
     
     wm_text = "VORSCHAU"
-    wm_font_size = int(new_image.width * 0.18) # Groß quer drüber
+    wm_font_size = int(new_image.width * 0.18)
     try:
         wm_font = ImageFont.truetype(font_path, wm_font_size)
     except:
@@ -120,34 +119,34 @@ def process_image(image, name):
     # Halbtransparentes Grau
     wm_draw.text((wm_x, wm_y), wm_text, fill=(200, 200, 200, 150), font=wm_font)
     
-    # Zusammenfügen
     final_image = Image.alpha_composite(new_image.convert('RGBA'), watermark_layer)
     return final_image.convert('RGB')
 
-# --- FUNKTION: KI GENERIERUNG ---
+# --- FUNKTION: KI GENERIERUNG (VOLLE SZENE) ---
 def generate_coloring_page(name, theme, hobby, companion, drawing_style):
     try:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         
-        # Stil-Mapping
+        # Stil-Anpassung
         if "Disney" in drawing_style:
-            style_prompt = "in a cute Disney-like animation style, large eyes, soft curves"
+            style_desc = "Disney-style animation line art, soft curves, expressive eyes"
         elif "Comic" in drawing_style:
-            style_prompt = "in a classic comic book style, dynamic pose, detailed but clear"
+            style_desc = "classic American comic book line art, dynamic and detailed"
         else:
-            style_prompt = "in a very simple, bold line art style (chibi), minimum details"
+            style_desc = "clean, bold children's book illustration style"
 
-        # OPTIMIERTER PROMPT GEGEN DOPPELGÄNGER
+        # PROMPT ÄNDERUNG: Volle Szene statt leerer Hintergrund
         prompt_text = (
-            f"A single, vertical, full-body coloring book page black and white line drawing. "
-            f"Subject: One single character representing a child named {name}, dressed as {theme}, holding a {companion}. "
-            f"Action: The character is {hobby}. "
-            f"Style: {style_prompt}. Pure black and white vector lines. White background. "
-            f"CONSTRAINTS: Do not split the image. Do not use panels. Do not use split screen. "
-            f"Show ONLY ONE central figure. No background details, no shading, no greyscale. High contrast."
+            f"A vertical coloring book page (DIN A4 ratio). "
+            f"The image must be a FULL SCENE filling the entire page from top to bottom. "
+            f"Setting: A detailed and magical '{theme}' world (e.g. landscape, buildings, nature relevant to the theme). "
+            f"Main Character: A happy child named {name} is in the center, {hobby}. "
+            f"Companion: Accompanied by a cute {companion} interacting with the child. "
+            f"Style: {style_desc}. Pure black and white outlines only. "
+            f"Background Requirement: DO NOT leave the background empty. Fill the background with elements fitting the theme (trees, clouds, castles, houses) suitable for coloring. "
+            f"Technical: Thick clean lines. No shading. No greyscale. No solid black fills."
         )
         
-        # Bild generieren
         response = client.images.generate(
             model="dall-e-3",
             prompt=prompt_text,
@@ -168,14 +167,12 @@ if st.button("✨ Vorschau erstellen"):
     if not child_name or not theme:
         st.warning("Bitte Name und Thema eingeben.")
     else:
-        with st.spinner("Maler-Roboter arbeiten... 🤖🎨"):
-            # Syntax-Fehler hier behoben: "=" hinzugefügt
+        with st.spinner("✨ Die KI malt deine Themenwelt..."):
             raw_image, error = generate_coloring_page(child_name, theme, hobby, companion, drawing_style)
             
             if error:
                 st.error(error)
             else:
-                # Hier fügen wir den Namen per Python hinzu
                 final_image = process_image(raw_image, child_name)
                 st.session_state.generated_image = final_image
                 st.rerun()
@@ -187,12 +184,11 @@ if st.session_state.generated_image:
     with col2:
         st.image(st.session_state.generated_image, use_container_width=True)
         
-        st.success("Gefällt dir das Bild? Die HD-Version ist noch schärfer!")
+        st.success("Tipp: Die HD-Version ist perfekt scharf und ideal zum Drucken!")
         
-        # Kauf-Button
         st.markdown(f"""
             <a href="https://buy.stripe.com/dein_link" target="_blank" style="text-decoration: none;">
-                <div style="background-color: #4CAF50; color: white; padding: 15px; text-align: center; border-radius: 10px; font-weight: bold; font-size: 20px;">
+                <div style="background-color: #4CAF50; color: white; padding: 15px; text-align: center; border-radius: 10px; font-weight: bold; font-size: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                     🛒 Bild kaufen (3,99€)
                 </div>
             </a>
