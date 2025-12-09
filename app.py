@@ -125,17 +125,20 @@ def generate_coloring_page(name, theme, hobby, companion):
             
         # WICHTIG: Der Stil-Teil am Ende erzwingt den Look
         prompt_text += (
-            "Style requirements: Pure line art only. Thick, clean black outlines on a pure white background. "
-            "NO shading, NO grayscale, NO fill colors, NO complex details. "
-            "The image must be simple enough for a 5-year-old to color."
+            "Style requirements: A high-quality, professional, UNCLUTTERED coloring book page for a child aged 4-6.
+Style: Simplified, pure black and white cartoon line art. Use only thick, chunky, continuous outlines. No shading, no grayscale, no subtle internal lines.
+Composition: The single main subject must fill 80% of the vertical canvas. The background must be pure white.
+Subject: A single, happy child named '{name}' is actively '{hobby}' in a cheerful '{theme}' scene, with a cute and simple '{companion}'.
+Focus solely on large, easy-to-color areas.
+"
         )
         
         # Bild generieren (DALL-E 3)
         response = client.images.generate(
             model="dall-e-3",
             prompt=prompt_text,
-            size="1024x1024",  # HD Größe
-            quality="standard", # Kostet $0.04
+            size="1024x1792",  # DIN A4 Hochformat
+            quality="standard", 
             n=1
         )
         
