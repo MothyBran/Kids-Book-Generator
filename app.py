@@ -77,9 +77,9 @@ def generate_nsfw_image(figure, hair_color, hair_style, eye_color, phenotype, br
     try:
         # Der NSFW Prompt (Optimiert für detaillierte Bilder)
         input_prompt = (
-            f"A highly detailed, realistic NSFW image of a {phenotype} woman with {figure} figure, {hair_color} {hair_style} hair, "
+            f"A highly detailed, realistic image of a {phenotype} woman with {figure} figure, {hair_color} {hair_style} hair, "
             f"{eye_color} eyes, {breast_size} breasts, {butt_size} butt, in a {pose} pose, wearing {clothing_style}, "
-            f"in a {environment} setting. High resolution, explicit, adult content, uncensored, detailed anatomy."
+            f"in a {environment} setting. High resolution, detailed anatomy."
         )
         if additional_prompt:
             input_prompt += f" {additional_prompt}"
