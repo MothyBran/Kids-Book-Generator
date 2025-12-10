@@ -75,29 +75,28 @@ additional_prompt = st.text_input("Zusätzliche Prompt-Details", placeholder="z.
 # FUNKTION: BILD VIA REPLICATE (NSFW-FLUX)
 def generate_nsfw_image(figure, hair_color, hair_style, eye_color, phenotype, breast_size, butt_size, pose, clothing_style, environment, additional_prompt):
     try:
-        # Der NSFW Prompt (Optimiert für detaillierte Bilder)
+        # Subtiler Prompt ohne Trigger-Wörter
         input_prompt = (
-            f"A highly detailed, realistic NSFW image of a {phenotype} woman with {figure} figure, {hair_color} {hair_style} hair, "
+            f"A highly detailed, realistic image of a {phenotype} woman with {figure} figure, {hair_color} {hair_style} hair, "
             f"{eye_color} eyes, {breast_size} breasts, {butt_size} butt, in a {pose} pose, wearing {clothing_style}, "
-            f"in a {environment} setting. High resolution, explicit, adult content, uncensored, detailed anatomy."
+            f"in a {environment} setting. High resolution, detailed skin, beautiful lighting."
         )
         if additional_prompt:
             input_prompt += f" {additional_prompt}"
 
-        # Aufruf an Replicate (NSFW-Flux-Modell)
+        # Aufruf an Replicate
         output = replicate.run(
-            "aisha-ai-official/flux.1dev-uncensored-msfluxnsfw-v3",
+            "aisha-ai-official/nsfw-flux-dev",
             input={
                 "prompt": input_prompt,
-                "width": 1024,  # Feste Breite (anpassen, wenn nötig)
-                "height": 1024,  # Feste Höhe für quadratische Bilder (oder z.B. 768 für 1024x768)
-                "steps": 8,  # Anzahl der Schritte (für schnellere Generierung)
-                "guidance_scale": 3.5,  # Stärke der Prompt-Befolgung
-                "seed": -1,  # Zufällig; für Reproduzierbarkeit einen festen Wert setzen
+                "width": 1024,
+                "height": 1024,
+                "steps": 8,
+                "guidance_scale": 3.5,
+                "seed": -1,
             }
         )
         
-        # Output ist eine Liste von URLs
         image_url = output[0]
         image_response = requests.get(image_url)
         return Image.open(BytesIO(image_response.content)), None
