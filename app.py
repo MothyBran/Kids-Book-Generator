@@ -77,16 +77,17 @@ def generate_nsfw_image(figure, hair_color, hair_style, eye_color, phenotype, br
     try:
         # Subtiler Prompt ohne Trigger-Wörter
         input_prompt = (
-    f"A beautiful, highly detailed portrait of a {phenotype} woman with {figure} figure, "
-    f"{hair_color} {hair_style} hair, {eye_color} eyes, in a {pose} pose, "
-    f"wearing stylish {clothing_style}, in a {environment}. Soft lighting, elegant atmosphere."
+            f"A highly detailed, realistic image of a {phenotype} woman with {figure} figure, "
+            f"{hair_color} {hair_style} hair, {eye_color} eyes, "
+            f"in a {pose} pose, wearing {clothing_style}, in a {environment} setting. "
+            f"High resolution, beautiful lighting, detailed skin."
         )
         if additional_prompt:
             input_prompt += f" {additional_prompt}"
 
         # Aufruf an Replicate
-        output = replicate.run(
-            "aisha-ai-official/nsfw-flux-dev",
+                output = replicate.run(
+            "aisha-ai-official/nsfw-flux-dev:8789ec8279c4b1614014feb714fef69fea839d446b76c36f9f20e92ae7f8a952",
             input={
                 "prompt": input_prompt,
                 "width": 1024,
