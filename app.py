@@ -86,7 +86,7 @@ def generate_nsfw_image(figure, hair_color, hair_style, eye_color, phenotype, br
             input_prompt += f" {additional_prompt}"
 
         # Aufruf an Replicate
-                output = replicate.run(
+            output = replicate.run(
             "aisha-ai-official/nsfw-flux-dev:8789ec8279c4b1614014feb714fef69fea839d446b76c36f9f20e92ae7f8a952",
             input={
                 "prompt": input_prompt,
